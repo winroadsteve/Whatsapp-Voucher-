@@ -1,9 +1,12 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { CardType, VoucherCard } from '../types';
 
-// We use Gemini to handle messy input (e.g., email forwards, mixed text)
-// that simple regex cannot handle efficiently.
+const PORTAL_LINKS = {
+  [CardType.WAEC]: 'https://www.waecdirect.org/',
+  [CardType.NECO]: 'https://results.neco.gov.ng/',
+  [CardType.NABTEB]: 'https://eworld.nabteb.gov.ng/',
+  [CardType.UNKNOWN]: '#'
+};
 
 export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]> => {
   if (!process.env.API_KEY) {
@@ -17,14 +20,15 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
     Your task is to identify PINs and Serial Numbers from the provided text.
     
     Rules for identification:
-    1. A 'PIN' is typically a long sequence of digits (10-15 digits).
+    1. A 'PIN' is typically a sequence of digits (usually 10-15 digits).
     2. A 'Serial' is typically alphanumeric.
     3. Determine the 'type' based on the Serial Number:
-       - Starts with 'NE' followed immediately by numbers: NECO Token.
-       - Starts with 'WRN': WAEC PIN.
-       - Starts with 'NER': NABTEB PIN.
-       - Otherwise: Unknown/Voucher.
+       - Serial starts with 'NE' or is just 'NE': CardType is 'NECO Token'.
+       - Serial starts with 'WRN': CardType is 'WAEC PIN'.
+       - Serial starts with 'NER': CardType is 'NABTEB PIN'.
+       - Otherwise: CardType is 'Voucher'.
     
+    If multiple items are found, extract all of them.
     Return a clean JSON array of objects.
   `;
 
@@ -54,29 +58,30 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
       }
     });
 
-    const jsonStr = response.text;
+    const jsonStr = response.text?.trim();
     if (!jsonStr) return [];
 
     const parsed = JSON.parse(jsonStr);
     
-    // Map to our internal format
+    if (!Array.isArray(parsed)) return [];
+
     return parsed.map((item: any) => formatVoucher(item.pin, item.serial, item.type));
 
   } catch (error) {
     console.error("Gemini Extraction Error:", error);
-    throw new Error("Failed to process text with AI. Please try manual entry or standard format.");
+    throw new Error("Failed to process text with AI.");
   }
 };
 
-// Helper to format consistent with the app's regex logic
 const formatVoucher = (pin: string, serial: string, type: CardType): VoucherCard => {
-  const formattedText = `*${type}*\n*PIN:* ${pin}\n*Serial:* ${serial}`;
+  const portal = PORTAL_LINKS[type] || '#';
+  const formattedText = `*${type}*\n*PIN:* ${pin}\n*Serial:* ${serial}\n\n*Check result here:* ${portal}\n\nThank you for your purchase!`;
   return {
     id: crypto.randomUUID(),
-    originalText: `${pin} ${serial}`,
     pin,
     serial,
     type,
-    formattedText
+    formattedText,
+    status: 'unused'
   };
 };
