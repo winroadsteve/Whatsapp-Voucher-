@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Copy, Trash2, Smartphone, Wand2, RefreshCw, CheckCircle2, 
@@ -32,12 +31,13 @@ const BASE_PRICES = {
 
 /**
  * Robust detection of card type based on serial number patterns.
+ * Priority check: "NER" must be checked before "NE" to avoid false NECO detection.
  */
 const identifyType = (serial: string): CardType => {
   const sUpper = serial.toUpperCase().trim();
+  if (sUpper.startsWith('NER')) return CardType.NABTEB;
   if (sUpper.startsWith('NE')) return CardType.NECO;
   if (sUpper.startsWith('WRN')) return CardType.WAEC;
-  if (sUpper.startsWith('NER')) return CardType.NABTEB;
   return CardType.UNKNOWN;
 };
 

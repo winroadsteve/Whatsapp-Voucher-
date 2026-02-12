@@ -22,10 +22,10 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
     Rules for identification:
     1. A 'PIN' is typically a sequence of digits (usually 10-15 digits).
     2. A 'Serial' is typically alphanumeric.
-    3. Determine the 'type' based on the Serial Number:
-       - Serial starts with 'NE' or is just 'NE': CardType is 'NECO Token'.
-       - Serial starts with 'WRN': CardType is 'WAEC PIN'.
+    3. Determine the 'type' based on the Serial Number (Priority order matters):
        - Serial starts with 'NER': CardType is 'NABTEB PIN'.
+       - Serial starts with 'NE': CardType is 'NECO Token'.
+       - Serial starts with 'WRN': CardType is 'WAEC PIN'.
        - Otherwise: CardType is 'Voucher'.
     
     If multiple items are found, extract all of them.
