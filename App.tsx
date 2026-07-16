@@ -47,20 +47,57 @@ const formatGroupForWhatsApp = (type: CardType, cards: VoucherCard[]): string =>
   return `*${type}*\n\n${pinsList}\n\n*Check result here:* ${portal}\n\nThank you for your purchase!`;
 };
 
-const formatGroupForEmail = (type: CardType, cards: VoucherCard[]): string => {
-  const portal = PORTAL_LINKS[type];
-  const pinsList = cards.map((c, i) => `${i + 1}. PIN: ${c.pin} | SN: ${c.serial}`).join('\n');
-  return `${type}\n\n${pinsList}\n\nCheck result here: ${portal}\n\nThank you for your purchase!`;
-};
-
 const formatSingleForWhatsApp = (card: VoucherCard): string => {
   const portal = PORTAL_LINKS[card.type];
   return `*${card.type}*\n*PIN:* ${card.pin}\n*Serial:* ${card.serial}\n\n*Check result here:* ${card.serial ? portal : '#'}\n\nThank you for your purchase!`;
 };
 
-const formatSingleForEmail = (card: VoucherCard): string => {
+const getPinLabel = (type: CardType) => {
+  return type === CardType.NECO ? 'Token' : 'PIN';
+};
+
+const formatGroupForEmail = (type: CardType, cards: VoucherCard[]): { html: string; text: string } => {
+  const portal = PORTAL_LINKS[type];
+  const pinLabel = getPinLabel(type);
+  const textPins = cards.map((c, i) => `${i + 1}. ${pinLabel}: ${c.pin} | SN: ${c.serial}`).join('\n');
+  const plainText = `${type}\n\n${textPins}\n\nCheck result here: ${portal}\n\nThank you for your purchase!`;
+
+  const htmlPins = cards.map((c, i) => `${i + 1}. <strong>${pinLabel}:</strong> ${c.pin} | <strong>SN:</strong> ${c.serial}`).join('<br>');
+  const htmlText = `<strong>${type}</strong><br><br>${htmlPins}<br><br>Check result here: <a href="${portal}">${portal}</a><br><br>Thank you for your purchase!`;
+
+  return { html: htmlText, text: plainText };
+};
+
+const formatSingleForEmail = (card: VoucherCard): { html: string; text: string } => {
   const portal = PORTAL_LINKS[card.type];
-  return `${card.type}\nPIN: ${card.pin}\nSerial: ${card.serial}\n\nCheck result here: ${portal}\n\nThank you for your purchase!`;
+  const pinLabel = getPinLabel(card.type);
+  const plainText = `${card.type}\n${pinLabel}: ${card.pin}\nSerial: ${card.serial}\n\nCheck result here: ${portal}\n\nThank you for your purchase!`;
+
+  const htmlText = `<strong>${card.type}</strong><br><strong>${pinLabel}:</strong> ${card.pin}<br><strong>Serial:</strong> ${card.serial}<br><br>Check result here: <a href="${portal}">${portal}</a><br><br>Thank you for your purchase!`;
+
+  return { html: htmlText, text: plainText };
+};
+
+const copyToClipboardAsHtmlAndText = async (html: string, plainText: string): Promise<boolean> => {
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      const htmlBlob = new Blob([html], { type: 'text/html' });
+      const textBlob = new Blob([plainText], { type: 'text/plain' });
+      const item = new ClipboardItem({
+        'text/html': htmlBlob,
+        'text/plain': textBlob
+      });
+      await navigator.clipboard.write([item]);
+      return true;
+    } catch (e) {
+      console.error('Failed to copy rich text using ClipboardItem, falling back to plain text', e);
+    }
+  }
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(plainText);
+    return true;
+  }
+  return false;
 };
 
 const createVoucherObject = (pin: string, serial: string, originalText?: string): VoucherCard => {
@@ -111,7 +148,10 @@ const parseInputLocally = (input: string): VoucherCard[] => {
       .replace(/SN[:\s]*/gi, ' ')
       .replace(/Not\s*Used/gi, ' ');
     
-    const rawParts = cleanedLine.split(/[\s\t,]+/).filter(p => p.trim().length > 0);
+    const rawParts = cleanedLine
+      .split(/[\s\t,]+/)
+      .filter(p => p.trim().length > 0)
+      .filter(p => !isIgnoredWord(p));
     
     const pin = rawParts.find(p => /^\d{10,}$/.test(p));
     
@@ -313,9 +353,9 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
   };
 
   const handleCopyGroupEmail = async () => {
-    const combinedText = formatGroupForEmail(type, cards);
+    const formatted = formatGroupForEmail(type, cards);
     try {
-      await navigator.clipboard.writeText(combinedText);
+      await copyToClipboardAsHtmlAndText(formatted.html, formatted.text);
       setCopiedGroupEmail(true);
       cards.forEach(c => onMarkUsed(c.id));
       setTimeout(() => setCopiedGroupEmail(false), 2000);
@@ -344,9 +384,9 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
   };
 
   const handleCopySingleEmail = async (card: VoucherCard) => {
-    const text = formatSingleForEmail(card);
+    const formatted = formatSingleForEmail(card);
     try {
-      await navigator.clipboard.writeText(text);
+       await copyToClipboardAsHtmlAndText(formatted.html, formatted.text);
       setCopiedIndividualEmail(prev => ({ ...prev, [card.id]: true }));
       onMarkUsed(card.id);
       setTimeout(() => setCopiedIndividualEmail(prev => ({ ...prev, [card.id]: false })), 2000);
