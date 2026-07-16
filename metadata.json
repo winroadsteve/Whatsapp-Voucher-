@@ -1,5 +1,6 @@
 {
   "name": "PinFormatter for WhatsApp",
   "description": "Instantly format voucher PINs and Serial numbers for professional WhatsApp delivery. Supports auto-detection for WAEC, NECO, and NABTEB.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

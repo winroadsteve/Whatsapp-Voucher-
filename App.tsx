@@ -3,7 +3,7 @@ import {
   Copy, Trash2, Smartphone, Wand2, RefreshCw, CheckCircle2, 
   AlertCircle, Clock, Heart, Send, Upload, History, LayoutDashboard,
   Download, Check, Calculator, ChevronRight, X, Image as ImageIcon, 
-  Wifi, WifiOff, Settings, Camera, Layers, ExternalLink
+  Wifi, WifiOff, Settings, Camera, Layers, ExternalLink, Mail
 } from 'lucide-react';
 import { CardType, VoucherCard, VoucherStatus, BrandingLogos } from './types';
 import { parseUnstructuredText } from './services/geminiService';
@@ -47,9 +47,20 @@ const formatGroupForWhatsApp = (type: CardType, cards: VoucherCard[]): string =>
   return `*${type}*\n\n${pinsList}\n\n*Check result here:* ${portal}\n\nThank you for your purchase!`;
 };
 
+const formatGroupForEmail = (type: CardType, cards: VoucherCard[]): string => {
+  const portal = PORTAL_LINKS[type];
+  const pinsList = cards.map((c, i) => `${i + 1}. PIN: ${c.pin} | SN: ${c.serial}`).join('\n');
+  return `${type}\n\n${pinsList}\n\nCheck result here: ${portal}\n\nThank you for your purchase!`;
+};
+
 const formatSingleForWhatsApp = (card: VoucherCard): string => {
   const portal = PORTAL_LINKS[card.type];
-  return `*${card.type}*\n*PIN:* ${card.pin}\n*Serial:* ${card.serial}\n\n*Check result here:* ${portal}\n\nThank you for your purchase!`;
+  return `*${card.type}*\n*PIN:* ${card.pin}\n*Serial:* ${card.serial}\n\n*Check result here:* ${card.serial ? portal : '#'}\n\nThank you for your purchase!`;
+};
+
+const formatSingleForEmail = (card: VoucherCard): string => {
+  const portal = PORTAL_LINKS[card.type];
+  return `${card.type}\nPIN: ${card.pin}\nSerial: ${card.serial}\n\nCheck result here: ${portal}\n\nThank you for your purchase!`;
 };
 
 const createVoucherObject = (pin: string, serial: string, originalText?: string): VoucherCard => {
@@ -63,6 +74,20 @@ const createVoucherObject = (pin: string, serial: string, originalText?: string)
     formattedText: '', 
     status: 'unused'
   };
+};
+
+const isIgnoredWord = (word: string): boolean => {
+  const clean = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().trim();
+  const ignored = [
+    'STATUS', 'ACTION', 'NOT', 'USED', 'UNUSED', 'ACTIVE', 'INACTIVE', 
+    'PENDING', 'SUCCESS', 'FAILED', 'DATE', 'TIME', 'AMOUNT', 'PRICE', 
+    'EMAIL', 'NAME', 'TYPE', 'VOUCHER', 'CARD', 'PIN', 'PINS', 'SERIAL', 
+    'SERIALS', 'NUMBER', 'NUMBERS', 'SN', 'NO', 'SELECT', 'VIEW', 'COPY', 
+    'DELETE', 'PRINT', 'DOWNLOAD', 'CHECK', 'COMPLETED', 'EXPIRED', 'REDEEMED', 
+    'REDEEM', 'DETAILS', 'PORTAL', 'LINK', 'TOKEN', 'TOKENS', 'TRANSACTION', 
+    'LOG', 'HISTORY', 'COMPOSITE', 'MATCH'
+  ];
+  return ignored.includes(clean);
 };
 
 /**
@@ -92,9 +117,11 @@ const parseInputLocally = (input: string): VoucherCard[] => {
     
     const serial = rawParts.find(p => {
       if (p === pin) return false;
-      const up = p.toUpperCase();
+      const cleanP = p.replace(/[^a-zA-Z0-9]/g, '');
+      if (isIgnoredWord(cleanP)) return false;
+      const up = cleanP.toUpperCase();
       if (up.startsWith('WRN') || up.startsWith('NE') || up.startsWith('NER')) return true;
-      return /^[A-Z0-9]{5,}$/i.test(p) && /[A-Z]/i.test(p);
+      return /^[A-Z0-9]{5,}$/i.test(cleanP) && /[A-Z]/i.test(cleanP);
     });
 
     if (pin && serial) {
@@ -268,7 +295,9 @@ interface GroupedVoucherSectionProps {
 
 const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, cards, logos, onDelete, onMarkUsed, onSentGroup }) => {
   const [copiedGroup, setCopiedGroup] = useState(false);
+  const [copiedGroupEmail, setCopiedGroupEmail] = useState(false);
   const [copiedIndividual, setCopiedIndividual] = useState<Record<string, boolean>>({});
+  const [copiedIndividualEmail, setCopiedIndividualEmail] = useState<Record<string, boolean>>({});
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleCopyGroup = async () => {
@@ -280,6 +309,18 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       setTimeout(() => setCopiedGroup(false), 2000);
     } catch (err) {
       console.error('Failed to copy group', err);
+    }
+  };
+
+  const handleCopyGroupEmail = async () => {
+    const combinedText = formatGroupForEmail(type, cards);
+    try {
+      await navigator.clipboard.writeText(combinedText);
+      setCopiedGroupEmail(true);
+      cards.forEach(c => onMarkUsed(c.id));
+      setTimeout(() => setCopiedGroupEmail(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy group email', err);
     }
   };
 
@@ -299,6 +340,18 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       setTimeout(() => setCopiedIndividual(prev => ({ ...prev, [card.id]: false })), 2000);
     } catch (err) {
       console.error('Failed to copy single', err);
+    }
+  };
+
+  const handleCopySingleEmail = async (card: VoucherCard) => {
+    const text = formatSingleForEmail(card);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndividualEmail(prev => ({ ...prev, [card.id]: true }));
+      onMarkUsed(card.id);
+      setTimeout(() => setCopiedIndividualEmail(prev => ({ ...prev, [card.id]: false })), 2000);
+    } catch (err) {
+      console.error('Failed to copy single email', err);
     }
   };
 
@@ -413,22 +466,33 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{cards.length} items queued</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
            <button 
              onClick={handleCopyGroup}
              className={`px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
                copiedGroup ? 'bg-green-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
              }`}
+             title="Copy for WhatsApp (with markdown bolding)"
            >
              {copiedGroup ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-             {copiedGroup ? 'Combined Copied' : 'Copy Combined'}
+             {copiedGroup ? 'WhatsApp Copied' : 'Copy WhatsApp'}
+           </button>
+           <button 
+             onClick={handleCopyGroupEmail}
+             className={`px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
+               copiedGroupEmail ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+             }`}
+             title="Copy for Email (plain text without asterisks)"
+           >
+             {copiedGroupEmail ? <CheckCircle2 size={14} /> : <Mail size={14} />}
+             {copiedGroupEmail ? 'Email Copied' : 'Copy Email'}
            </button>
            <button 
              onClick={handleSendGroup}
              className="px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-all flex items-center gap-2 shadow-lg shadow-green-100"
            >
              <Send size={14} />
-             Send Combined
+             Send WhatsApp
            </button>
         </div>
       </div>
@@ -465,10 +529,20 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
                      copiedIndividual[card.id] ? 'bg-green-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                    }`}
-                   title="Copy single text"
+                   title="Copy for WhatsApp (with markdown bolding)"
                  >
                    {copiedIndividual[card.id] ? <CheckCircle2 size={16} /> : <Copy size={16} />}
-                   <span className="md:hidden">Copy</span>
+                   <span className="md:hidden">WhatsApp</span>
+                 </button>
+                 <button 
+                   onClick={() => handleCopySingleEmail(card)}
+                   className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                     copiedIndividualEmail[card.id] ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                   }`}
+                   title="Copy for Email (plain text without asterisks)"
+                 >
+                   {copiedIndividualEmail[card.id] ? <CheckCircle2 size={16} /> : <Mail size={16} />}
+                   <span className="md:hidden">Email</span>
                  </button>
                  <button 
                    onClick={() => downloadReceipt(card)}
