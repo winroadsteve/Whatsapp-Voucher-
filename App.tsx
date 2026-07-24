@@ -192,30 +192,30 @@ const DownloadProgressOverlay: React.FC<{
   if (!card) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 text-white animate-fade-in">
-      <div className="bg-white/10 border border-white/20 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center gap-4">
-        <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-green-500/20 rounded-full border border-green-400/30">
-          <Download className="w-8 h-8 sm:w-10 sm:h-10 text-green-400 animate-bounce" />
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 text-white animate-fade-in">
+      <div className="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-5 sm:p-6 max-w-xs w-full text-center shadow-2xl flex flex-col items-center gap-3">
+        <div className="w-11 h-11 flex items-center justify-center bg-emerald-500/20 rounded-full border border-emerald-500/30">
+          <Download className="w-5 h-5 text-emerald-400 animate-bounce" />
         </div>
 
         <div>
-          <h3 className="text-lg sm:text-xl font-black tracking-tight text-white">Generating Receipt</h3>
-          <p className="text-xs font-semibold text-slate-300 mt-1 uppercase tracking-wider">
+          <h3 className="text-sm font-bold tracking-tight text-white">Generating Receipt</h3>
+          <p className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wider">
             {card.type} • {card.pin.slice(0, 4)}••••
           </p>
         </div>
 
         {/* Progress bar container */}
-        <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden p-0.5 border border-white/10">
+        <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
           <div 
-            className="bg-gradient-to-r from-green-500 to-emerald-400 h-full rounded-full transition-all duration-300 ease-out shadow-lg"
+            className="bg-gradient-to-r from-emerald-500 to-green-400 h-full rounded-full transition-all duration-150 ease-out shadow-sm"
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           />
         </div>
 
-        <div className="flex justify-between items-center w-full text-[11px] font-bold text-slate-300">
+        <div className="flex justify-between items-center w-full text-[10px] font-bold text-slate-400">
           <span className="truncate pr-2">{stage}</span>
-          <span className="font-mono text-green-400 font-black">{Math.round(progress)}%</span>
+          <span className="font-mono text-emerald-400">{Math.round(progress)}%</span>
         </div>
       </div>
     </div>
@@ -435,8 +435,7 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
   };
 
   const downloadReceipt = async (card: VoucherCard) => {
-    setDownloadState({ card, progress: 10, stage: 'Preparing canvas engine...' });
-    await new Promise(r => setTimeout(r, 120));
+    setDownloadState({ card, progress: 20, stage: 'Preparing canvas...' });
 
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -448,9 +447,6 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       setDownloadState(null);
       return;
     }
-
-    setDownloadState({ card, progress: 30, stage: 'Rendering receipt layout...' });
-    await new Promise(r => setTimeout(r, 120));
 
     canvas.width = 450;
     canvas.height = 300;
@@ -471,29 +467,28 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
 
     const customLogo = logos[card.type];
     if (customLogo) {
-      setDownloadState({ card, progress: 55, stage: 'Embedding exam body logo...' });
+      setDownloadState({ card, progress: 60, stage: 'Drawing logo...' });
       try {
         const img = new Image();
         img.src = customLogo;
-        await new Promise((resolve) => {
-          img.onload = () => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(65, 45, 25, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(40, 20, 50, 50);
-            ctx.drawImage(img, 40, 20, 50, 50);
-            ctx.restore();
-            resolve(true);
-          };
-          img.onerror = resolve;
-        });
+        if (!img.complete) {
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(65, 45, 25, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(40, 20, 50, 50);
+        ctx.drawImage(img, 40, 20, 50, 50);
+        ctx.restore();
       } catch (err) { console.error("Logo draw error", err); }
     }
 
-    setDownloadState({ card, progress: 75, stage: 'Drawing PIN & Serial credentials...' });
-    await new Promise(r => setTimeout(r, 120));
+    setDownloadState({ card, progress: 90, stage: 'Rendering text...' });
 
     ctx.fillStyle = '#ffffff';
     ctx.font = '900 24px sans-serif';
@@ -521,17 +516,16 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
     ctx.fillText('Thanks for choosing Intech.org.ng', 30, 282);
     ctx.fillText(new Date().toLocaleDateString(), 330, 282);
 
-    setDownloadState({ card, progress: 95, stage: 'Exporting PNG image file...' });
-    await new Promise(r => setTimeout(r, 150));
-
+    // Trigger download immediately without artificial delays
     const link = document.createElement('a');
     link.download = `Receipt-${card.type}-${card.serial}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 
-    setDownloadState({ card, progress: 100, stage: 'Download Completed!' });
-    await new Promise(r => setTimeout(r, 450));
-    setDownloadState(null);
+    setDownloadState({ card, progress: 100, stage: 'Downloaded!' });
+    setTimeout(() => {
+      setDownloadState(null);
+    }, 200);
   };
 
   const getThemeColor = (type: CardType) => {
@@ -563,113 +557,113 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       )}
       
       {/* Group Header */}
-      <div className="px-4 sm:px-8 py-4 sm:py-6 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3 sm:gap-4">
+      <div className="px-4 sm:px-8 py-3.5 sm:py-5 bg-slate-50/50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           {logos[type] ? (
-            <img src={logos[type]} className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl object-contain border bg-white p-1 shadow-sm" alt="logo" />
+            <img src={logos[type]} className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg object-contain border bg-white p-0.5 shadow-2xs" alt="logo" />
           ) : (
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-${theme}-500 flex items-center justify-center text-white shadow-lg shadow-${theme}-100`}>
-              <Layers size={18} className="sm:hidden" />
-              <Layers size={22} className="hidden sm:block" />
+            <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-${theme}-500 flex items-center justify-center text-white shadow-md shadow-${theme}-100`}>
+              <Layers size={16} className="sm:hidden" />
+              <Layers size={20} className="hidden sm:block" />
             </div>
           )}
           <div>
-            <h4 className="font-black text-slate-800 tracking-tight uppercase text-sm sm:text-base">{type}s</h4>
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{cards.length} items queued</p>
+            <h4 className="font-black text-slate-800 tracking-tight uppercase text-xs sm:text-sm">{type}s</h4>
+            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest">{cards.length} queued</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 w-full sm:w-auto">
            <button 
              onClick={handleCopyGroup}
-             className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-               copiedGroup ? 'bg-green-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+             className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1 shadow-2xs ${
+               copiedGroup ? 'bg-emerald-600 text-white border border-emerald-600' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80'
              }`}
              title="Copy for WhatsApp (with markdown bolding)"
            >
-             {copiedGroup ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-             {copiedGroup ? 'WA Copied' : 'WhatsApp'}
+             {copiedGroup ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+             {copiedGroup ? 'Copied' : 'WhatsApp'}
            </button>
            <button 
              onClick={handleCopyGroupEmail}
-             className={`flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-               copiedGroupEmail ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+             className={`flex-1 sm:flex-none justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1 shadow-2xs ${
+               copiedGroupEmail ? 'bg-sky-600 text-white border border-sky-600' : 'bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200/80'
              }`}
              title="Copy for Email (plain text without asterisks)"
            >
-             {copiedGroupEmail ? <CheckCircle2 size={14} /> : <Mail size={14} />}
-             {copiedGroupEmail ? 'Email Copied' : 'Email'}
+             {copiedGroupEmail ? <CheckCircle2 size={13} /> : <Mail size={13} />}
+             {copiedGroupEmail ? 'Copied' : 'Email'}
            </button>
            <button 
              onClick={handleSendGroup}
-             className="w-full sm:w-auto justify-center px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl text-[10px] sm:text-[11px] font-black uppercase tracking-widest bg-green-600 text-white hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-lg shadow-green-100"
+             className="w-full sm:w-auto justify-center px-2.5 sm:px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95 transition-all flex items-center gap-1 shadow-xs shadow-emerald-200"
            >
-             <Send size={14} />
-             Send WhatsApp
+             <Send size={13} />
+             Send WA
            </button>
         </div>
       </div>
 
       {/* Group Items */}
-      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+      <div className="p-3 sm:p-4 space-y-2.5 sm:space-y-3">
         {cards.map((card, idx) => (
-          <div key={card.id} className="p-4 sm:p-6 bg-slate-50/50 rounded-2xl sm:rounded-[28px] border border-slate-100 group hover:border-slate-200 transition-all">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
+          <div key={card.id} className="p-3.5 sm:p-5 bg-slate-50/60 rounded-xl sm:rounded-2xl border border-slate-200/70 group hover:border-slate-300 transition-all">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
               
-              <div className="flex items-start sm:items-center gap-3 sm:gap-5 flex-1 w-full min-w-0">
-                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[10px] sm:text-[11px] font-black text-slate-400 shrink-0 shadow-sm mt-0.5 sm:mt-0">
+              <div className="flex items-start sm:items-center gap-2.5 sm:gap-4 flex-1 w-full min-w-0">
+                 <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-400 shrink-0 shadow-2xs mt-0.5 sm:mt-0">
                    {idx + 1}
                  </div>
-                 <div className="space-y-2 sm:space-y-3 w-full min-w-0 overflow-hidden">
+                 <div className="space-y-1.5 sm:space-y-2 w-full min-w-0 overflow-hidden">
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1">{card.type} PIN</span>
-                      <div className={`font-mono text-base sm:text-xl font-black tracking-wider sm:tracking-widest transition-all break-all ${card.status === 'used' ? 'text-slate-300 line-through' : 'text-slate-900'}`}>
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{card.type} PIN</span>
+                      <div className={`font-mono text-sm sm:text-lg font-black tracking-wider transition-all break-all ${card.status === 'used' ? 'text-slate-300 line-through' : 'text-slate-900'}`}>
                         {card.pin}
                       </div>
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1">Serial No.</span>
-                      <div className="font-mono text-xs sm:text-sm font-bold text-slate-500 tracking-wider break-all">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Serial No.</span>
+                      <div className="font-mono text-xs sm:text-xs font-bold text-slate-500 tracking-wider break-all">
                         {card.serial}
                       </div>
                     </div>
                  </div>
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:items-center gap-2 sm:gap-3 w-full md:w-auto pt-3 sm:pt-4 md:pt-0 border-t md:border-t-0 border-slate-200/60">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:items-center gap-1.5 sm:gap-2 w-full md:w-auto pt-2.5 sm:pt-3 md:pt-0 border-t md:border-t-0 border-slate-200/60">
                  <button 
                    onClick={() => handleCopySingle(card)}
-                   className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all ${
-                     copiedIndividual[card.id] ? 'bg-green-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                   className={`flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-2xs ${
+                     copiedIndividual[card.id] ? 'bg-emerald-600 text-white border border-emerald-600' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80'
                    }`}
                    title="Copy for WhatsApp (with markdown bolding)"
                  >
-                   {copiedIndividual[card.id] ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+                   {copiedIndividual[card.id] ? <CheckCircle2 size={13} /> : <Copy size={13} />}
                    <span>WhatsApp</span>
                  </button>
                  <button 
                    onClick={() => handleCopySingleEmail(card)}
-                   className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all ${
-                     copiedIndividualEmail[card.id] ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                   className={`flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-2xs ${
+                     copiedIndividualEmail[card.id] ? 'bg-sky-600 text-white border border-sky-600' : 'bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200/80'
                    }`}
                    title="Copy for Email (plain text without asterisks)"
                  >
-                   {copiedIndividualEmail[card.id] ? <CheckCircle2 size={15} /> : <Mail size={15} />}
+                   {copiedIndividualEmail[card.id] ? <CheckCircle2 size={13} /> : <Mail size={13} />}
                    <span>Email</span>
                  </button>
                  <button 
                    onClick={() => downloadReceipt(card)}
-                   className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-all text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest"
+                   className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 transition-all text-[10px] font-extrabold uppercase tracking-wider active:scale-95 shadow-2xs"
                    title="Download Image Receipt"
                  >
-                   <ImageIcon size={15} />
+                   <ImageIcon size={13} />
                    <span>Receipt</span>
                  </button>
                  <button 
                    onClick={() => onDelete(card.id)}
-                   className="flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 transition-all text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest"
+                   className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/80 transition-all text-[10px] font-extrabold uppercase tracking-wider active:scale-95 shadow-2xs"
                    title="Delete Voucher"
                  >
-                   <Trash2 size={15} />
+                   <Trash2 size={13} />
                    <span>Delete</span>
                  </button>
               </div>
@@ -679,14 +673,14 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       </div>
       
       {/* Group Footer Actions */}
-      <div className="px-4 sm:px-8 py-3 sm:py-4 bg-slate-50/30 border-t border-slate-100 flex justify-between items-center">
+      <div className="px-4 sm:px-8 py-2.5 sm:py-3 bg-slate-50/40 border-t border-slate-100 flex justify-between items-center">
          <a 
           href={PORTAL_LINKS[type]} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-[10px] font-black text-slate-400 hover:text-blue-500 flex items-center gap-1.5 uppercase tracking-widest transition-colors"
+          className="text-[9px] sm:text-[10px] font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1 uppercase tracking-wider transition-colors px-2 py-1 rounded bg-white border border-slate-200/80 shadow-2xs"
          >
-           <ExternalLink size={12} /> {type} Portal
+           <ExternalLink size={11} /> {type} Portal
          </a>
       </div>
     </div>
@@ -872,28 +866,31 @@ export default function App() {
             </button>
           </nav>
 
-          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
              <button 
               onClick={() => setShowCalculator(true)}
-              className="p-2 sm:p-2.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl transition-all"
+              className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition-all flex items-center gap-1 text-[10px] font-extrabold uppercase shadow-2xs active:scale-95"
               title="Calculator"
              >
-               <Calculator size={18} />
+               <Calculator size={14} />
+               <span className="hidden md:inline">Calc</span>
              </button>
              <button 
               onClick={() => setShowBranding(true)}
-              className="p-2 sm:p-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition-all"
+              className="px-2.5 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200/80 rounded-lg transition-all flex items-center gap-1 text-[10px] font-extrabold uppercase shadow-2xs active:scale-95"
               title="Branding"
              >
-               <ImageIcon size={18} />
+               <ImageIcon size={14} />
+               <span className="hidden md:inline">Logos</span>
              </button>
              <input type="file" accept=".txt,.csv" ref={fileInputRef} onChange={handleBulkImport} className="hidden" />
              <button 
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 sm:p-2.5 bg-slate-50 text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+              className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80 rounded-lg transition-all flex items-center gap-1 text-[10px] font-extrabold uppercase shadow-2xs active:scale-95"
               title="Import"
              >
-               <Upload size={18} />
+               <Upload size={14} />
+               <span className="hidden md:inline">Import</span>
              </button>
           </div>
         </div>
@@ -903,18 +900,18 @@ export default function App() {
         {view === 'generator' ? (
           <>
             <div className="bg-white rounded-3xl sm:rounded-[40px] shadow-sm border border-slate-200 overflow-hidden flex flex-col h-fit transition-all hover:shadow-md">
-              <div className="p-4 sm:p-8 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                 <h3 className="font-black text-slate-800 flex items-center gap-2 sm:gap-3 text-sm sm:text-base">
                   <Settings size={18} className="text-green-600" />
                   Entry Box
                 </h3>
-                <button onClick={clearAll} className="text-[10px] text-slate-400 hover:text-red-500 font-black flex items-center gap-1.5 transition-colors uppercase tracking-widest">
-                  <RefreshCw size={12} /> Reset all
+                <button onClick={clearAll} className="text-[10px] text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-md font-bold flex items-center gap-1 transition-all uppercase tracking-wider">
+                  <RefreshCw size={11} /> Reset all
                 </button>
               </div>
-              <div className="p-4 sm:p-8 relative flex flex-col gap-4 sm:gap-6">
+              <div className="p-4 sm:p-6 relative flex flex-col gap-3 sm:gap-4">
                 <textarea
-                  className="w-full h-64 sm:h-96 p-4 sm:p-8 bg-slate-50 rounded-2xl sm:rounded-[32px] border border-slate-200 focus:border-green-500 focus:ring-8 focus:ring-green-500/5 transition-all outline-none resize-none font-mono text-xs sm:text-sm text-slate-700 placeholder:text-slate-300"
+                  className="w-full h-64 sm:h-96 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-[28px] border border-slate-200 focus:border-green-500 focus:ring-8 focus:ring-green-500/5 transition-all outline-none resize-none font-mono text-xs sm:text-sm text-slate-700 placeholder:text-slate-300"
                   placeholder={`Paste list here...\nExample:\n367618921196\tNE07585150\n123456789012 WRN12345678`}
                   value={inputText}
                   onChange={(e) => {
@@ -929,15 +926,15 @@ export default function App() {
                 <button
                   onClick={handleAiFix}
                   disabled={isProcessing || !process.env.API_KEY || !isOnline}
-                  className={`w-full py-4 sm:py-6 rounded-2xl sm:rounded-[24px] font-black text-white transition-all shadow-xl flex items-center justify-center gap-3 sm:gap-4 text-base sm:text-lg
-                    ${isProcessing ? 'bg-purple-400 cursor-wait' : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-[1.01] active:scale-[0.99] shadow-purple-200'}
+                  className={`w-full py-2.5 sm:py-3 px-4 rounded-xl font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 text-xs sm:text-sm active:scale-98
+                    ${isProcessing ? 'bg-purple-400 cursor-wait' : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-purple-200'}
                     ${(!process.env.API_KEY || !isOnline) ? 'opacity-50 grayscale' : ''}
                   `}
                 >
                   {isProcessing ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    <Wand2 size={20} />
+                    <Wand2 size={16} />
                   )}
                   {isProcessing ? 'Processing...' : 'AI Smart Extract'}
                 </button>
@@ -991,9 +988,9 @@ export default function App() {
                 {history.length > 0 && (
                   <button 
                     onClick={clearHistory}
-                    className="flex items-center gap-2 px-4 sm:px-8 py-2.5 sm:py-4 rounded-xl sm:rounded-2xl text-xs font-black text-red-600 hover:bg-red-50 border border-red-100 transition-all uppercase tracking-widest"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-extrabold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 transition-all uppercase tracking-wider shadow-2xs active:scale-95"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={13} />
                     Wipe database
                   </button>
                 )}
