@@ -17,6 +17,7 @@ const PORTAL_LINKS = {
   [CardType.WAEC]: 'https://www.waecdirect.org/',
   [CardType.NECO]: 'https://results.neco.gov.ng/',
   [CardType.NABTEB]: 'https://eworld.nabteb.gov.ng/',
+  [CardType.NBAIS]: 'https://resultchecker.nbais.com.ng/',
   [CardType.UNKNOWN]: '#'
 };
 
@@ -24,6 +25,7 @@ const BASE_PRICES = {
   [CardType.WAEC]: 4000,
   [CardType.NECO]: 1500,
   [CardType.NABTEB]: 1500,
+  [CardType.NBAIS]: 1500,
   [CardType.UNKNOWN]: 0
 };
 
@@ -35,6 +37,7 @@ const BASE_PRICES = {
  */
 const identifyType = (serial: string): CardType => {
   const sUpper = serial.toUpperCase().trim();
+  if (sUpper.startsWith('NBAIS') || sUpper.includes('NBAIS')) return CardType.NBAIS;
   if (sUpper.startsWith('NER')) return CardType.NABTEB;
   if (sUpper.startsWith('NE')) return CardType.NECO;
   if (sUpper.startsWith('WRN')) return CardType.WAEC;
@@ -160,7 +163,7 @@ const parseInputLocally = (input: string): VoucherCard[] => {
       const cleanP = p.replace(/[^a-zA-Z0-9]/g, '');
       if (isIgnoredWord(cleanP)) return false;
       const up = cleanP.toUpperCase();
-      if (up.startsWith('WRN') || up.startsWith('NE') || up.startsWith('NER')) return true;
+      if (up.startsWith('WRN') || up.startsWith('NE') || up.startsWith('NER') || up.startsWith('NBAIS') || up.includes('NBAIS')) return true;
       return /^[A-Z0-9]{5,}$/i.test(cleanP) && /[A-Z]/i.test(cleanP);
     });
 
@@ -267,7 +270,7 @@ const BrandingModal = ({ logos, onUpdate, onClose }: { logos: BrandingLogos, onU
         </div>
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
           <p className="text-xs sm:text-sm text-slate-500">Upload logos for each exam body to make your digital receipts look professional.</p>
-          {[CardType.WAEC, CardType.NECO, CardType.NABTEB].map(type => (
+          {[CardType.WAEC, CardType.NECO, CardType.NABTEB, CardType.NBAIS].map(type => (
             <div key={type} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden relative group shrink-0">
                 {logos[type] ? (
@@ -301,7 +304,8 @@ const PriceCalculatorModal = ({ onClose }: { onClose: () => void }) => {
   const [counts, setCounts] = useState({
     [CardType.WAEC]: 0,
     [CardType.NECO]: 0,
-    [CardType.NABTEB]: 0
+    [CardType.NABTEB]: 0,
+    [CardType.NBAIS]: 0
   });
 
   const calculateItemTotal = (type: CardType, qty: number) => {
@@ -329,7 +333,7 @@ const PriceCalculatorModal = ({ onClose }: { onClose: () => void }) => {
           </button>
         </div>
         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
-          {[CardType.WAEC, CardType.NECO, CardType.NABTEB].map(type => (
+          {[CardType.WAEC, CardType.NECO, CardType.NABTEB, CardType.NBAIS].map(type => (
             <div key={type} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 gap-2">
               <div className="flex flex-col min-w-0">
                 <span className="text-xs sm:text-sm font-bold text-slate-700">{type}</span>
@@ -460,6 +464,7 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       [CardType.WAEC]: '#eab308',
       [CardType.NECO]: '#10b981',
       [CardType.NABTEB]: '#a855f7',
+      [CardType.NBAIS]: '#6366f1',
       [CardType.UNKNOWN]: '#64748b'
     };
     ctx.fillStyle = headerColors[card.type] || '#64748b';
@@ -533,6 +538,7 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
       case CardType.NECO: return 'emerald';
       case CardType.WAEC: return 'yellow';
       case CardType.NABTEB: return 'purple';
+      case CardType.NBAIS: return 'indigo';
       default: return 'slate';
     }
   };
@@ -543,7 +549,9 @@ const GroupedVoucherSection: React.FC<GroupedVoucherSectionProps> = ({ type, car
     <div className={`bg-white rounded-2xl sm:rounded-[40px] border border-slate-200 overflow-hidden shadow-sm mb-6 sm:mb-8 transition-all hover:shadow-md border-l-[8px] sm:border-l-[12px] ${
       type === CardType.NECO ? 'border-emerald-500' : 
       type === CardType.WAEC ? 'border-yellow-500' : 
-      'border-purple-500'
+      type === CardType.NABTEB ? 'border-purple-500' : 
+      type === CardType.NBAIS ? 'border-indigo-500' :
+      'border-slate-500'
     }`}>
       <canvas ref={canvasRef} className="hidden" />
       
@@ -705,6 +713,7 @@ export default function App() {
       [CardType.WAEC]: [],
       [CardType.NECO]: [],
       [CardType.NABTEB]: [],
+      [CardType.NBAIS]: [],
       [CardType.UNKNOWN]: []
     };
     cards.forEach(card => {
@@ -1023,7 +1032,9 @@ export default function App() {
                               <span className={`px-2.5 sm:px-4 py-1 rounded-xl text-[9px] sm:text-[10px] font-black uppercase border ${
                                 item.type === CardType.WAEC ? 'bg-yellow-50 text-yellow-700 border-yellow-100' :
                                 item.type === CardType.NECO ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                'bg-purple-50 text-purple-700 border-purple-100'
+                                item.type === CardType.NABTEB ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                                item.type === CardType.NBAIS ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                'bg-slate-50 text-slate-700 border-slate-100'
                               }`}>
                                 {item.type}
                               </span>

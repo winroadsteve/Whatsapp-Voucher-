@@ -3,6 +3,7 @@ export enum CardType {
   NECO = 'NECO Token',
   WAEC = 'WAEC PIN',
   NABTEB = 'NABTEB PIN',
+  NBAIS = 'NBAIS PIN',
   UNKNOWN = 'Voucher',
 }
 
@@ -24,6 +25,7 @@ export interface BrandingLogos {
   [CardType.WAEC]?: string;
   [CardType.NECO]?: string;
   [CardType.NABTEB]?: string;
+  [CardType.NBAIS]?: string;
 }
 
 export interface ParsingResult {

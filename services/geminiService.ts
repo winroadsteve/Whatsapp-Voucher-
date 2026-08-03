@@ -5,6 +5,7 @@ const PORTAL_LINKS = {
   [CardType.WAEC]: 'https://www.waecdirect.org/',
   [CardType.NECO]: 'https://results.neco.gov.ng/',
   [CardType.NABTEB]: 'https://eworld.nabteb.gov.ng/',
+  [CardType.NBAIS]: 'https://resultchecker.nbais.com.ng/',
   [CardType.UNKNOWN]: '#'
 };
 
@@ -23,6 +24,7 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
     1. A 'PIN' is typically a sequence of digits (usually 10-15 digits).
     2. A 'Serial' is typically alphanumeric.
     3. Determine the 'type' based on the Serial Number (Priority order matters):
+       - Serial starts with 'NBAIS' or contains 'NBAIS': CardType is 'NBAIS PIN'.
        - Serial starts with 'NER': CardType is 'NABTEB PIN'.
        - Serial starts with 'NE': CardType is 'NECO Token'.
        - Serial starts with 'WRN': CardType is 'WAEC PIN'.
@@ -48,7 +50,7 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
               serial: { type: Type.STRING, description: "The extracted Serial number" },
               type: { 
                 type: Type.STRING, 
-                enum: [CardType.NECO, CardType.WAEC, CardType.NABTEB, CardType.UNKNOWN],
+                enum: [CardType.NECO, CardType.WAEC, CardType.NABTEB, CardType.NBAIS, CardType.UNKNOWN],
                 description: "The detected card type"
               }
             },
