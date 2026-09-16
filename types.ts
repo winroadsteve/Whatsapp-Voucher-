@@ -4,6 +4,7 @@ export enum CardType {
   WAEC = 'WAEC PIN',
   NABTEB = 'NABTEB PIN',
   NBAIS = 'NBAIS PIN',
+  NYSC = 'NYSC WAEC Result Verification PIN',
   UNKNOWN = 'Voucher',
 }
 
@@ -26,6 +27,7 @@ export interface BrandingLogos {
   [CardType.NECO]?: string;
   [CardType.NABTEB]?: string;
   [CardType.NBAIS]?: string;
+  [CardType.NYSC]?: string;
 }
 
 export interface ParsingResult {
