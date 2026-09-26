@@ -7,6 +7,7 @@ const PORTAL_LINKS = {
   [CardType.NABTEB]: 'https://eworld.nabteb.gov.ng/',
   [CardType.NBAIS]: 'https://resultchecker.nbais.com.ng/',
   [CardType.NYSC]: 'https://portal.nysc.org.ng/',
+  [CardType.NECO_EVERIFY]: 'https://everify.neco.gov.ng/',
   [CardType.UNKNOWN]: '#'
 };
 
@@ -24,7 +25,8 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
     Rules for identification:
     1. A 'PIN' is typically a sequence of digits (usually 10-15 digits).
     2. A 'Serial' is typically alphanumeric.
-    3. Determine the 'type' based on the Serial Number (Priority order matters):
+    3. Determine the 'type' based on the Serial Number or context (Priority order matters):
+       - Serial starts with or contains 'EVERIFY', 'EVERIFICATION', 'NECOEV', 'NECO-EV', 'NEV', or text refers to NECO Everification: CardType is 'NECO Everification PIN'.
        - Serial starts with 'NYSC' or contains 'NYSC': CardType is 'NYSC WAEC Result Verification PIN'.
        - Serial starts with 'NBAIS' or contains 'NBAIS': CardType is 'NBAIS PIN'.
        - Serial starts with 'NER': CardType is 'NABTEB PIN'.
@@ -52,7 +54,7 @@ export const parseUnstructuredText = async (text: string): Promise<VoucherCard[]
               serial: { type: Type.STRING, description: "The extracted Serial number" },
               type: { 
                 type: Type.STRING, 
-                enum: [CardType.NECO, CardType.WAEC, CardType.NABTEB, CardType.NBAIS, CardType.NYSC, CardType.UNKNOWN],
+                enum: [CardType.NECO, CardType.WAEC, CardType.NABTEB, CardType.NBAIS, CardType.NYSC, CardType.NECO_EVERIFY, CardType.UNKNOWN],
                 description: "The detected card type"
               }
             },
