@@ -140,7 +140,8 @@ const isIgnoredWord = (word: string): boolean => {
     'SERIALS', 'NUMBER', 'NUMBERS', 'SN', 'NO', 'SELECT', 'VIEW', 'COPY', 
     'DELETE', 'PRINT', 'DOWNLOAD', 'CHECK', 'COMPLETED', 'EXPIRED', 'REDEEMED', 
     'REDEEM', 'DETAILS', 'PORTAL', 'LINK', 'TOKEN', 'TOKENS', 'TRANSACTION', 
-    'LOG', 'HISTORY', 'COMPOSITE', 'MATCH'
+    'LOG', 'HISTORY', 'COMPOSITE', 'MATCH', 'EXAMPLE', 'EXAMPLES',
+    'WAEC', 'NECO', 'NABTEB', 'NBAIS', 'NYSC', 'EVERIFY', 'EVERIFICATION'
   ];
   return ignored.includes(clean);
 };
@@ -946,7 +947,7 @@ export default function App() {
               <div className="p-4 sm:p-6 relative flex flex-col gap-3 sm:gap-4">
                 <textarea
                   className="w-full h-64 sm:h-96 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-[28px] border border-slate-200 focus:border-green-500 focus:ring-8 focus:ring-green-500/5 transition-all outline-none resize-none font-mono text-xs sm:text-sm text-slate-700 placeholder:text-slate-300"
-                  placeholder={`Paste list here...\nExample:\n367618921196\tNE07585150\n123456789012 WRN12345678`}
+                  placeholder={`Paste list here...\n\nExamples:\nWAEC: 123456789012 WRN12345678\nNECO: 367618921196 NE07585150\nNABTEB: 564738291048 NER12345678\nNBAIS: 982374615243 NBAIS12345678\nNYSC WAEC: 748392018475 NYSC12345678\nNECO Everify: 615243789012 EVERIFY12345678`}
                   value={inputText}
                   onChange={(e) => {
                     setInputText(e.target.value);
